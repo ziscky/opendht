@@ -3,24 +3,12 @@
 namespace dht {
 
 
-GetCallbackSimple
+GetCallback
 bindGetCb(GetCallbackRaw raw_cb, void* user_data)
 {
     if (not raw_cb) return {};
     return [=](const std::shared_ptr<Value>& value) {
         return raw_cb(value, user_data);
-    };
-}
-
-GetCallback
-bindGetCb(GetCallbackSimple cb)
-{
-    if (not cb) return {};
-    return [=](const std::vector<std::shared_ptr<Value>>& values) {
-        for (const auto& v : values)
-            if (not cb(v))
-                return false;
-        return true;
     };
 }
 

@@ -206,17 +206,15 @@ SecureDht::findCertificate(const InfoHash& node, std::function<void(const std::s
     }
 
     auto found = std::make_shared<bool>(false);
-    Dht::get(node, [cb,node,found,this](const std::vector<std::shared_ptr<Value>>& vals) {
+    Dht::get(node, [cb,node,found,this](std::shared_ptr<Value> v) {
         if (*found)
             return false;
-        for (const auto& v : vals) {
-            if (auto cert = registerCertificate(node, v->data)) {
-                *found = true;
-                DHT_LOG.DEBUG("Found certificate for %s", node.toString().c_str());
-                if (cb)
-                    cb(cert);
-                return false;
-            }
+        if (auto cert = registerCertificate(node, v->data)) {
+            *found = true;
+            DHT_LOG.DEBUG("Found certificate for %s", node.toString().c_str());
+            if (cb)
+                cb(cert);
+            return false;
         }
         return true;
     }, [cb,found](bool) {
@@ -249,43 +247,40 @@ SecureDht::findPublicKey(const InfoHash& node, std::function<void(const std::sha
 GetCallback
 SecureDht::getCallbackFilter(GetCallback cb, Value::Filter&& filter)
 {
-    return [=](const std::vector<std::shared_ptr<Value>>& values) {
-        std::vector<std::shared_ptr<Value>> tmpvals {};
-        for (const auto& v : values) {
-            // Decrypt encrypted values
-            if (v->isEncrypted()) {
-                if (not key_)
-                    continue;
-                try {
-                    Value decrypted_val (decrypt(*v));
-                    if (decrypted_val.recipient == getId()) {
-                        nodesPubKeys_[decrypted_val.owner->getId()] = decrypted_val.owner;
-                        if (not filter or filter(decrypted_val))
-                            tmpvals.push_back(std::make_shared<Value>(std::move(decrypted_val)));
-                    }
-                    // Ignore values belonging to other people
-                } catch (const std::exception& e) {
-                    DHT_LOG.WARN("Could not decrypt value %s : %s", v->toString().c_str(), e.what());
+    return [=](const std::shared_ptr<Value>& v) {
+        std::shared_ptr<Value> tmpval {};
+        // Decrypt encrypted values
+        if (v->isEncrypted()) {
+            if (not key_)
+                return true;
+            try {
+                Value decrypted_val (decrypt(*v));
+                if (decrypted_val.recipient == getId() and decrypted_val.owner) {
+                    nodesPubKeys_[decrypted_val.owner->getId()] = decrypted_val.owner;
+                    if (not filter or filter(decrypted_val))
+                        tmpval = std::make_shared<Value>(std::move(decrypted_val));
                 }
-            }
-            // Check signed values
-            else if (v->isSigned()) {
-                if (v->owner and v->owner->checkSignature(v->getToSign(), v->signature)) {
-                    nodesPubKeys_[v->owner->getId()] = v->owner;
-                    if (not filter  or filter(*v))
-                        tmpvals.push_back(v);
-                }
-                else
-                    DHT_LOG.WARN("Signature verification failed for %s", v->toString().c_str());
-            }
-            // Forward normal values
-            else {
-                if (not filter or filter(*v))
-                    tmpvals.push_back(v);
+                // Ignore values belonging to other people
+            } catch (const std::exception& e) {
+                DHT_LOG.WARN("Could not decrypt value %s : %s", v->toString().c_str(), e.what());
             }
         }
-        if (cb && not tmpvals.empty())
-            return cb(tmpvals);
+        // Check signed values
+        else if (v->isSigned()) {
+            if (v->owner and v->owner->checkSignature(v->getToSign(), v->signature)) {
+                if (not filter  or filter(*v))
+                    tmpval = v;
+            }
+            else
+                DHT_LOG.WARN("Signature verification failed for %s", v->toString().c_str());
+        }
+        // Forward normal values
+        else {
+            if (not filter or filter(*v))
+                tmpval = v;
+        }
+        if (cb && tmpval)
+            return cb(tmpval);
         return true;
     };
 }
@@ -319,16 +314,14 @@ SecureDht::putSigned(const InfoHash& hash, std::shared_ptr<Value> val, DoneCallb
 
     // Check if data already exists on the dht
     get(hash,
-        [val,this] (const std::vector<std::shared_ptr<Value>>& vals) {
+        [val,this] (std::shared_ptr<Value> v) {
             DHT_LOG.DEBUG("Found online previous value being announced.");
-            for (const auto& v : vals) {
-                if (!v->isSigned())
-                    DHT_LOG.ERR("Existing non-signed value seems to exists at this location.");
-                else if (not v->owner or v->owner->getId() != getId())
-                    DHT_LOG.ERR("Existing signed value belonging to someone else seems to exists at this location.");
-                else if (val->seq <= v->seq)
-                    val->seq = v->seq + 1;
-            }
+            if (!v->isSigned())
+                DHT_LOG.ERR("Existing non-signed value seems to exists at this location.");
+            else if (not v->owner or v->owner->getId() != getId())
+                DHT_LOG.ERR("Existing signed value belonging to someone else seems to exists at this location.");
+            else if (val->seq <= v->seq)
+                val->seq = v->seq + 1;
             return true;
         },
         [hash,val,this,callback] (bool /* ok */) {

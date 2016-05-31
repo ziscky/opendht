@@ -49,8 +49,7 @@ struct SecureDhtConfig
 
 using ValuesExport = std::pair<InfoHash, Blob>;
 
-using GetCallback = std::function<bool(const std::vector<std::shared_ptr<Value>>& values)>;
-using GetCallbackSimple = std::function<bool(std::shared_ptr<Value> value)>;
+using GetCallback = std::function<bool(std::shared_ptr<Value> value)>;
 using ShutdownCallback = std::function<void()>;
 
 using CertificateStoreQuery = std::function<std::vector<std::shared_ptr<crypto::Certificate>>(const InfoHash& pk_id)>;
@@ -59,8 +58,7 @@ typedef bool (*GetCallbackRaw)(std::shared_ptr<Value>, void *user_data);
 
 static constexpr size_t DEFAULT_STORAGE_LIMIT {1024 * 1024 * 64};
 
-GetCallbackSimple bindGetCb(GetCallbackRaw raw_cb, void* user_data);
-GetCallback bindGetCb(GetCallbackSimple cb);
+GetCallback bindGetCb(GetCallbackRaw raw_cb, void* user_data);
 
 using DoneCallback = std::function<void(bool success, const std::vector<std::shared_ptr<Node>>& nodes)>;
 typedef void (*DoneCallbackRaw)(bool, std::vector<std::shared_ptr<Node>>*, void *user_data);

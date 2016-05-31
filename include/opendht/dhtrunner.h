@@ -54,14 +54,6 @@ public:
     DhtRunner();
     virtual ~DhtRunner();
 
-    void get(InfoHash id, GetCallbackSimple cb, DoneCallback donecb={}, Value::Filter f = Value::AllFilter()) {
-        get(id, bindGetCb(cb), donecb, f);
-    }
-
-    void get(InfoHash id, GetCallbackSimple cb, DoneCallbackSimple donecb={}, Value::Filter f = Value::AllFilter()) {
-        get(id, bindGetCb(cb), donecb, f);
-    }
-
     void get(InfoHash hash, GetCallback vcb, DoneCallback dcb, Value::Filter f={});
 
     void get(InfoHash id, GetCallback cb, DoneCallbackSimple donecb={}, Value::Filter f = Value::AllFilter()) {
@@ -99,13 +91,12 @@ public:
     std::future<std::vector<std::shared_ptr<dht::Value>>> get(InfoHash key, Value::Filter f = Value::AllFilter()) {
         auto p = std::make_shared<std::promise<std::vector<std::shared_ptr< dht::Value >>>>();
         auto values = std::make_shared<std::vector<std::shared_ptr< dht::Value >>>();
-        get(key, [=](const std::vector<std::shared_ptr<dht::Value>>& vlist) {
-            values->insert(values->end(), vlist.begin(), vlist.end());
+        get(key, [=](std::shared_ptr<dht::Value> v) {
+            values->emplace_back(v);
             return true;
         }, [=](bool) {
             p->set_value(std::move(*values));
-        },
-        f);
+        }, f);
         return p->get_future();
     }
 
@@ -124,9 +115,6 @@ public:
 
     std::future<size_t> listen(InfoHash key, GetCallback vcb, Value::Filter f = Value::AllFilter());
     std::future<size_t> listen(const std::string& key, GetCallback vcb, Value::Filter f = Value::AllFilter());
-    std::future<size_t> listen(InfoHash key, GetCallbackSimple cb, Value::Filter f = Value::AllFilter()) {
-        return listen(key, bindGetCb(cb), f);
-    }
 
     template <class T>
     std::future<size_t> listen(InfoHash hash, std::function<bool(std::vector<T>&&)> cb)
@@ -139,15 +127,11 @@ public:
     template <typename T>
     std::future<size_t> listen(InfoHash hash, std::function<bool(T&&)> cb, Value::Filter f = Value::AllFilter())
     {
-        return listen(hash, [=](const std::vector<std::shared_ptr<Value>>& vals) {
-            for (const auto& v : vals) {
-                try {
-                    if (not cb(Value::unpack<T>(*v)))
-                        return false;
-                } catch (const std::exception&) {
-                    continue;
-                }
-            }
+        return listen(hash, [=](std::shared_ptr<Value> v) {
+            try {
+                if (not cb(Value::unpack<T>(*v)))
+                    return false;
+            } catch (...) {}
             return true;
         },
         getFilterSet<T>(f));

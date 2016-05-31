@@ -1292,22 +1292,16 @@ Dht::listen(const InfoHash& id, GetCallback cb, Value::Filter&& f)
     auto vals = std::make_shared<std::map<Value::Id, std::shared_ptr<Value>>>();
     auto token = ++listener_token;
 
-    auto gcb = [=](const std::vector<std::shared_ptr<Value>>& values) {
-        std::vector<std::shared_ptr<Value>> newvals {};
-        for (const auto& v : values) {
-            auto it = vals->find(v->id);
-            if (it == vals->cend() || !(*it->second == *v))
-                newvals.push_back(v);
-        }
-        if (!newvals.empty()) {
-            if (!cb(newvals)) {
+    auto gcb = [=](std::shared_ptr<Value> v) {
+        auto it = vals->find(v->id);
+        if (it == vals->cend() || !(*it->second == *v)) {
+            if (!cb(v)) {
                 cancelListen(id, token);
                 return false;
-            }
-            for (const auto& v : newvals) {
-                auto it = vals->emplace(v->id, v);
-                if (not it.second)
-                    it.first->second = v;
+            } else {
+                auto nit = vals->emplace(v->id, v);
+                if (not nit.second)
+                    nit.first->second = v;
             }
         }
         return true;
@@ -1322,14 +1316,12 @@ Dht::listen(const InfoHash& id, GetCallback cb, Value::Filter&& f)
     if (st != store.end()) {
         if (not st->empty()) {
             std::vector<std::shared_ptr<Value>> newvals = st->get(f);
-            if (not newvals.empty()) {
-                if (!cb(newvals))
+            for (const auto& v : newvals) {
+                if (!cb(v))
                     return 0;
-                for (const auto& v : newvals) {
-                    auto it = vals->emplace(v->id, v);
-                    if (not it.second)
-                        it.first->second = v;
-                }
+                auto it = vals->emplace(v->id, v);
+                if (not it.second)
+                    it.first->second = v;
             }
         }
         tokenlocal = ++st->listener_token;
@@ -1448,29 +1440,25 @@ Dht::get(const InfoHash& id, GetCallback getcb, DoneCallback donecb, Value::Filt
                 donecb(ok, *all_nodes);
         }
     };
-    auto cb = [=](const std::vector<std::shared_ptr<Value>>& values) {
+    auto cb = [=](std::shared_ptr<Value> v) {
         if (status->done)
             return false;
-        std::vector<std::shared_ptr<Value>> newvals {};
-        for (const auto& v : values) {
-            auto it = std::find_if(vals->cbegin(), vals->cend(), [&](const std::shared_ptr<Value>& sv) {
-                return sv == v || *sv == *v;
-            });
-            if (it == vals->cend()) {
-                if (!filter || filter(*v))
-                    newvals.push_back(v);
+        auto it = std::find_if(vals->cbegin(), vals->cend(), [&](const std::shared_ptr<Value>& sv) {
+            return sv == v || *sv == *v;
+        });
+        if (it == vals->cend()) {
+            if (!filter || filter(*v)) {
+                status->ok = !getcb(v);
+                vals->emplace_back(v);
             }
-        }
-        if (!newvals.empty()) {
-            status->ok = !getcb(newvals);
-            vals->insert(vals->end(), newvals.begin(), newvals.end());
         }
         done_l({});
         return !status->ok;
     };
 
     /* Try to answer this search locally. */
-    cb(getLocal(id, filter));
+    for (const auto& v : getLocal(id, filter))
+        cb(v);
 
     Dht::search(id, AF_INET, cb, [=](bool ok, const std::vector<std::shared_ptr<Node>>& nodes) {
         //DHT_LOG.WARN("DHT done IPv4");
@@ -1588,14 +1576,11 @@ void
 Dht::storageChanged(Storage& st, ValueStorage& v)
 {
     if (not st.local_listeners.empty()) {
-        std::vector<std::pair<GetCallback, std::vector<std::shared_ptr<Value>>>> cbs;
+        std::vector<std::pair<GetCallback, std::shared_ptr<Value>>> cbs;
         DHT_LOG.DEBUG("Storage changed. Sending update to %lu local listeners.", st.local_listeners.size());
         for (const auto& l : st.local_listeners) {
-            std::vector<std::shared_ptr<Value>> vals;
             if (not l.second.filter or l.second.filter(*v.data))
-                vals.push_back(v.data);
-            if (not vals.empty())
-                cbs.emplace_back(l.second.get_cb, std::move(vals));
+                cbs.emplace_back(l.second.get_cb, v.data);
         }
         // listeners are copied: they may be deleted by the callback
         for (auto& cb : cbs)
@@ -2526,31 +2511,32 @@ Dht::onGetValuesDone(const Request& status,
             DHT_LOG.DEBUG("[search %s IPv%c] found %u values",
                     sr->id.toString().c_str(), sr->af == AF_INET ? '4' : '6',
                     a.values.size());
+            std::vector<std::pair<GetCallback, std::vector<std::shared_ptr<Value>>>> tmp_lists;
             for (auto& cb : sr->callbacks) {
                 if (!cb.get_cb) continue;
                 std::vector<std::shared_ptr<Value>> tmp;
                 std::copy_if(a.values.begin(), a.values.end(), std::back_inserter(tmp),
                     [&](const std::shared_ptr<Value>& v) {
-                        return not static_cast<bool>(cb.filter) or cb.filter(*v);
+                        return not cb.filter or cb.filter(*v);
                     }
                 );
                 if (not tmp.empty())
-                    cb.get_cb(tmp);
+                    tmp_lists.emplace_back(cb.get_cb, std::move(tmp));
             }
-            std::vector<std::pair<GetCallback, std::vector<std::shared_ptr<Value>>>> tmp_lists;
             for (auto& l : sr->listeners) {
                 if (!l.second.get_cb) continue;
                 std::vector<std::shared_ptr<Value>> tmp;
                 std::copy_if(a.values.begin(), a.values.end(), std::back_inserter(tmp),
                     [&](const std::shared_ptr<Value>& v) {
-                        return not static_cast<bool>(l.second.filter) or l.second.filter(*v);
+                        return not l.second.filter or l.second.filter(*v);
                     }
                 );
                 if (not tmp.empty())
                     tmp_lists.emplace_back(l.second.get_cb, tmp);
             }
-            for (auto& l : tmp_lists)
-                l.first(l.second);
+            for (auto& cb : tmp_lists)
+                for (const auto& v : cb.second)
+                    cb.first(v);
         }
     } else {
         DHT_LOG.WARN("[node %s] no token provided. Ignoring response content.", status.node->toString().c_str());

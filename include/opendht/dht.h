@@ -136,12 +136,6 @@ public:
     virtual void get(const InfoHash& key, GetCallback cb, DoneCallbackSimple donecb={}, Value::Filter&& f={}) {
         get(key, cb, bindDoneCb(donecb), std::forward<Value::Filter>(f));
     }
-    virtual void get(const InfoHash& key, GetCallbackSimple cb, DoneCallback donecb={}, Value::Filter&& f={}) {
-        get(key, bindGetCb(cb), donecb, std::forward<Value::Filter>(f));
-    }
-    virtual void get(const InfoHash& key, GetCallbackSimple cb, DoneCallbackSimple donecb, Value::Filter&& f={}) {
-        get(key, bindGetCb(cb), bindDoneCb(donecb), std::forward<Value::Filter>(f));
-    }
 
     /**
      * Get locally stored data for the given hash.
@@ -199,10 +193,6 @@ public:
      * @return a token to cancel the listener later.
      */
     virtual size_t listen(const InfoHash&, GetCallback, Value::Filter&&={});
-    virtual size_t listen(const InfoHash& key, GetCallbackSimple cb, Value::Filter f={}) {
-        return listen(key, bindGetCb(cb), std::forward<Value::Filter>(f));
-    }
-
     virtual bool cancelListen(const InfoHash&, size_t token);
 
     /**
