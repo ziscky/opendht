@@ -47,11 +47,6 @@ class DecryptError : public CryptoException {
         DecryptError(const std::string& str = "") : CryptoException(str) {};
 };
 
-struct PrivateKey;
-struct Certificate;
-
-using Identity = std::pair<std::shared_ptr<PrivateKey>, std::shared_ptr<Certificate>>;
-
 /**
  * A public key.
  */
@@ -151,9 +146,10 @@ private:
     PrivateKey(const PrivateKey&) = delete;
     PrivateKey& operator=(const PrivateKey&) = delete;
     Blob decryptBloc(const uint8_t* src, size_t src_size) const;
-
-    //friend dht::crypto::Identity dht::crypto::generateIdentity(const std::string&, dht::crypto::Identity, unsigned key_length);
 };
+
+struct Certificate;
+using Identity = std::pair<std::shared_ptr<PrivateKey>, std::shared_ptr<Certificate>>;
 
 struct Certificate {
     Certificate() {}
@@ -311,7 +307,6 @@ private:
     Certificate(const Certificate&) = delete;
     Certificate& operator=(const Certificate&) = delete;
 };
-
 
 /**
  * Generate an RSA key pair (4096 bits) and a certificate.
