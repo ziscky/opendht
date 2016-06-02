@@ -203,7 +203,7 @@ DhtRunner::exportValues() const {
 }
 
 void
-DhtRunner::setLoggers(LogMethod&& error, LogMethod&& warn, LogMethod&& debug) {
+DhtRunner::setLoggers(LogMethod error, LogMethod warn, LogMethod debug) {
     std::lock_guard<std::mutex> lck(dht_mtx);
     dht_->setLoggers(std::forward<LogMethod>(error), std::forward<LogMethod>(warn), std::forward<LogMethod>(debug));
 }

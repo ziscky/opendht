@@ -102,7 +102,7 @@ public:
     /**
      * Enable or disable logging of DHT internal messages
      */
-	void setLoggers(LogMethod&& error = (LogMethod&&)NOLOG, LogMethod&& warn = (LogMethod&&)NOLOG, LogMethod&& debug = (LogMethod&&)NOLOG);
+	void setLoggers(LogMethod error = NOLOG, LogMethod warn = NOLOG, LogMethod debug = NOLOG);
 
     virtual void registerType(const ValueType& type) {
         types[type.id] = type;

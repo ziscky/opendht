@@ -232,7 +232,7 @@ public:
 
     std::vector<ValuesExport> exportValues() const;
 
-    void setLoggers(LogMethod&& error = NOLOG, LogMethod&& warn = NOLOG, LogMethod&& debug = NOLOG);
+    void setLoggers(LogMethod err = NOLOG, LogMethod warn = NOLOG, LogMethod debug = NOLOG);
 
     void registerType(const ValueType& type);
 

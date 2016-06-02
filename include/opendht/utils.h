@@ -27,6 +27,7 @@
 #ifndef _WIN32
 #include <sys/socket.h>
 #else
+#include <ws2def.h>
 #include <ws2tcpip.h>
 #endif
 
