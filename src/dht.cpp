@@ -209,16 +209,6 @@ struct Dht::Get {
 };
 
 /**
- * A single "put" operation data
- */
-struct Dht::Announce {
-    bool permanent;
-    std::shared_ptr<Value> value;
-    time_point created;
-    DoneCallback callback;
-};
-
-/**
  * A single "listen" operation data
  */
 struct Dht::LocalListener {
@@ -442,6 +432,16 @@ struct Dht::Search {
     InfoHash id {};
     sa_family_t af;
 
+    /**
+     * A single "put" operation data
+     */
+    struct Announce {
+        bool permanent;
+        std::shared_ptr<Value> value;
+        time_point created;
+        DoneCallback callback;
+    };
+
     uint16_t tid;
     time_point refill_time {time_point::min()};
     time_point step_time {time_point::min()};           /* the time of the last search step */
@@ -476,6 +476,8 @@ struct Dht::Search {
      * @returns true if the node was not present and added to the search
      */
     bool insertNode(const std::shared_ptr<Node>& n, time_point now, const Blob& token={});
+
+    void put(const std::shared_ptr<Value>& value, DoneCallback&& callback, const time_point& created, const time_point& now, bool permanent);
 
     SearchNode* getNode(const std::shared_ptr<Node>& n) {
         auto srn = std::find_if(nodes.begin(), nodes.end(), [&](SearchNode& sn) {
@@ -1532,6 +1534,41 @@ Dht::search(const InfoHash& id, sa_family_t af, GetCallback gcb, QueryCallback q
 }
 
 void
+Dht::Search::put(const std::shared_ptr<Value>& value, DoneCallback&& callback, const time_point& created, const time_point& now, bool permanent)
+{
+    done = false;
+    expired = false;
+    auto a = std::find_if(announce.begin(), announce.end(), [&](const Announce& a_){
+        return a_.value->id == value->id;
+    });
+    if (a == announce.end()) {
+        announce.emplace_back(Announce {permanent, value, std::min(now, created), callback});
+        for (auto& n : nodes)
+            n.acked[value->id].reset();
+    }
+    else {
+        if (a->value != value) {
+            a->value = value;
+            for (auto& n : nodes)
+                n.acked[value->id].reset();
+        }
+        if (isAnnounced(value->id, getType(value->type), now)) {
+            if (a->callback)
+                a->callback(true, {});
+            a->callback = {};
+            if (callback) {
+                callback(true, {});
+            }
+            return;
+        } else {
+            if (a->callback)
+                a->callback(false, {});
+            a->callback = callback;
+        }
+    }
+}
+
+void
 Dht::announce(const InfoHash& id, sa_family_t af, std::shared_ptr<Value> value, DoneCallback callback,
         time_point created, bool permanent)
 {
@@ -1552,37 +1589,10 @@ Dht::announce(const InfoHash& id, sa_family_t af, std::shared_ptr<Value> value, 
             callback(false, {});
         return;
     }
-    sr->done = false;
-    sr->expired = false;
-    auto a_sr = std::find_if(sr->announce.begin(), sr->announce.end(), [&](const Announce& a){
-        return a.value->id == value->id;
-    });
-    if (a_sr == sr->announce.end()) {
-        sr->announce.emplace_back(Announce {permanent, value, std::min(now, created), callback});
-        for (auto& n : sr->nodes)
-            n.acked[value->id].reset();
-    }
-    else {
-        if (a_sr->value != value) {
-            a_sr->value = value;
-            for (auto& n : sr->nodes)
-                n.acked[value->id].reset();
-        }
-        if (sr->isAnnounced(value->id, getType(value->type), now)) {
-            if (a_sr->callback)
-                a_sr->callback(true, {});
-            a_sr->callback = {};
-            if (callback) {
-                callback(true, {});
-            }
-            return;
-        } else {
-            if (a_sr->callback)
-                a_sr->callback(false, {});
-            a_sr->callback = callback;
-        }
-    }
-    scheduler.edit(sr->nextSearchStep, scheduler.time());
+
+    sr->put(value, std::move(callback), created, now, permanent);
+
+    scheduler.edit(sr->nextSearchStep, now);
     //TODO
     //if (tm < search_time) {
     //    DHT_LOG.ERR("[search %s IPv%c] search_time is now in %lfs", sr->id.toString().c_str(),l
@@ -3139,7 +3149,7 @@ Dht::onAnnounceDone(const Request&, NetworkEngine::RequestAnswer& answer, std::s
 
     // If the value was just successfully announced, call the callback
     sr->announce.erase(std::remove_if(sr->announce.begin(), sr->announce.end(),
-        [&](Announce& a) {
+        [&](Search::Announce& a) {
             if (!a.value || a.value->id != answer.vid)
                 return false;
             auto type = getType(a.value->type);

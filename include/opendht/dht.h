@@ -318,7 +318,6 @@ private:
     // internal structures
     struct SearchNode;
     struct Get;
-    struct Announce;
     struct LocalListener;
     struct Search;
     struct ValueStorage;
