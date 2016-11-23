@@ -101,4 +101,20 @@ findMapValue(msgpack::object& map, const std::string& key) {
     return nullptr;
 }
 
+void findMapValues(msgpack::object& map, std::vector<std::pair<const char*, msgpack::object*>>& keys)
+{
+    if (map.type != msgpack::type::MAP) throw msgpack::type_error();
+    for (unsigned i = 0; i < map.via.map.size; i++) {
+        auto& o = map.via.map.ptr[i];
+        if (o.key.type != msgpack::type::STR) continue;
+        const auto key = o.key.as<std::string>();
+        for (auto& k : keys) {
+            if (key == k.first) {
+                k.second = &o.val;
+                break;
+            }
+        }
+    }
+}
+
 }

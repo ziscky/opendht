@@ -116,5 +116,7 @@ unpackMsg(Blob b) {
 msgpack::unpacked unpackMsg(Blob b);
 
 msgpack::object* findMapValue(msgpack::object& map, const std::string& key);
+void findMapValues(msgpack::object& map, std::vector<std::pair<const char*, msgpack::object*>>& keys);
+
 
 } // namespace dht

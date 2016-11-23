@@ -1251,22 +1251,35 @@ NetworkEngine::sendError(const SockAddr& addr,
 void
 ParsedMessage::msgpack_unpack(msgpack::object msg)
 {
-    auto y = findMapValue(msg, "y");
-    auto r = findMapValue(msg, "r");
-    auto e = findMapValue(msg, "e");
-    auto v = findMapValue(msg, "p");
+    std::vector<std::pair<const char*, msgpack::object*>> msg_vals {
+        {"y", nullptr},
+        {"r", nullptr},
+        {"e", nullptr},
+        {"p", nullptr},
+        {"t", nullptr},
+        {"v", nullptr},
+        {"n", nullptr},
+        {"q", nullptr},
+        {"a", nullptr}
+    };
+    findMapValues(msg, msg_vals);
 
-    if (auto t = findMapValue(msg, "t"))
+    auto y = msg_vals[0].second;
+    auto r = msg_vals[1].second;
+    auto e = msg_vals[2].second;
+    auto v = msg_vals[3].second;
+
+    if (auto t = msg_vals[4].second)
         tid = {t->as<std::array<char, 4>>()};
 
-    if (auto rv = findMapValue(msg, "v"))
+    if (auto rv = msg_vals[5].second)
         ua = rv->as<std::string>();
 
-    if (auto netid = findMapValue(msg, "n"))
+    if (auto netid = msg_vals[6].second)
         network = netid->as<NetId>();
 
     std::string q;
-    if (auto rq = findMapValue(msg, "q")) {
+    if (auto rq = msg_vals[7].second) {
         if (rq->type != msgpack::type::STR)
             throw msgpack::type_error();
         q = rq->as<std::string>();
@@ -1309,7 +1322,7 @@ ParsedMessage::msgpack_unpack(msgpack::object msg)
         return;
     }
 
-    auto a = findMapValue(msg, "a");
+    auto a = msg_vals[8].second;
     if (!a && !r && !e)
         throw msgpack::type_error();
     auto& req = a ? *a : (r ? *r : *e);
@@ -1320,34 +1333,52 @@ ParsedMessage::msgpack_unpack(msgpack::object msg)
         error_code = e->via.array.ptr[0].as<uint16_t>();
     }
 
-    if (auto t = findMapValue(req, "sid"))
+    std::vector<std::pair<const char*, msgpack::object*>> req_vals {
+        {"sid",     nullptr},
+        {"id",      nullptr},
+        {"h",       nullptr},
+        {"target",  nullptr},
+        {"q",       nullptr},
+        {"token",   nullptr},
+        {"vid",     nullptr},
+        {"n4",      nullptr},
+        {"n6",      nullptr},
+        {"sa",      nullptr},
+        {"c",       nullptr},
+        {"values",  nullptr},
+        {"fields",  nullptr},
+        {"w",       nullptr}
+    };
+    findMapValues(req, req_vals);
+
+    if (auto t = req_vals[0].second)
         socket_id = {t->as<std::array<char, 4>>()};
 
-    if (auto rid = findMapValue(req, "id"))
+    if (auto rid = req_vals[1].second)
         id = {*rid};
 
-    if (auto rh = findMapValue(req, "h"))
+    if (auto rh = req_vals[2].second)
         info_hash = {*rh};
 
-    if (auto rtarget = findMapValue(req, "target"))
+    if (auto rtarget = req_vals[3].second)
         target = {*rtarget};
 
-    if (auto rquery = findMapValue(req, "q"))
+    if (auto rquery = req_vals[4].second)
         query.msgpack_unpack(*rquery);
 
-    if (auto otoken = findMapValue(req, "token"))
+    if (auto otoken = req_vals[5].second)
         token = unpackBlob(*otoken);
 
-    if (auto vid = findMapValue(req, "vid"))
+    if (auto vid = req_vals[6].second)
         value_id = vid->as<Value::Id>();
 
-    if (auto rnodes4 = findMapValue(req, "n4"))
+    if (auto rnodes4 = req_vals[7].second)
         nodes4_raw = unpackBlob(*rnodes4);
 
-    if (auto rnodes6 = findMapValue(req, "n6"))
+    if (auto rnodes6 = req_vals[8].second)
         nodes6_raw = unpackBlob(*rnodes6);
 
-    if (auto sa = findMapValue(req, "sa")) {
+    if (auto sa = req_vals[9].second) {
         if (sa->type != msgpack::type::BIN)
             throw msgpack::type_error();
         auto l = sa->via.bin.size;
@@ -1369,10 +1400,10 @@ ParsedMessage::msgpack_unpack(msgpack::object msg)
     } else
         addr.second = 0;
 
-    if (auto rcreated = findMapValue(req, "c"))
+    if (auto rcreated = req_vals[10].second)
         created = from_time_t(rcreated->as<std::time_t>());
 
-    if (auto rvalues = findMapValue(req, "values")) {
+    if (auto rvalues = req_vals[11].second) {
         if (rvalues->type != msgpack::type::ARRAY)
             throw msgpack::type_error();
         for (size_t i = 0; i < rvalues->via.array.size; i++) {
@@ -1390,7 +1421,7 @@ ParsedMessage::msgpack_unpack(msgpack::object msg)
                 }
             }
         }
-    } else if (auto raw_fields = findMapValue(req, "fields")) {
+    } else if (auto raw_fields = req_vals[12].second) {
         if (auto rfields = findMapValue(*raw_fields, "f")) {
             auto vfields = rfields->as<std::set<Value::Field>>();
             if (auto rvalues = findMapValue(*raw_fields, "v")) {
@@ -1410,7 +1441,7 @@ ParsedMessage::msgpack_unpack(msgpack::object msg)
         }
     }
 
-    if (auto w = findMapValue(req, "w")) {
+    if (auto w = req_vals[13].second) {
         if (w->type != msgpack::type::ARRAY)
             throw msgpack::type_error();
         want = 0;
