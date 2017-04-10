@@ -193,7 +193,7 @@ NetworkEngine::openSocket(const Sp<Node>& node, TransPrefix tp, SocketCb&& cb)
     auto tid = TransId {tp, getNewTid()};
     auto s = opened_sockets.emplace(tid, std::make_shared<Socket>(node, tid, cb));
     if (not s.second)
-        DHT_LOG.e(node->id, "[node %s] socket (tid: %d) already opened!", node->id.toString().c_str(), tid.toInt());
+        DHT_LOG.e(node->id, "[node %s] socket (tid: %d) already opened!", node->id.to_c_str(), tid.toInt());
     return s.first->second;
 }
 
@@ -496,7 +496,7 @@ NetworkEngine::process(std::unique_ptr<ParsedMessage>&& msg, const SockAddr& fro
                 onError(req, DhtProtocolException {msg->error_code});
             } else {
                 DHT_LOG.w(msg->id, "[node %s %s] received unknown error message %u",
-                        msg->id.toString().c_str(), from.toString().c_str(), msg->error_code);
+                        msg->id.to_c_str(), from.toString().c_str(), msg->error_code);
             }
             break;
         }
@@ -532,7 +532,7 @@ NetworkEngine::process(std::unique_ptr<ParsedMessage>&& msg, const SockAddr& fro
                 sendPong(from, msg->tid);
                 break;
             case MessageType::FindNode: {
-                DHT_LOG.d(msg->target, node->id, "[node %s] got 'find' request for %s (%d)", node->toString().c_str(), msg->target.toString().c_str(), msg->want);
+                DHT_LOG.d(msg->target, node->id, "[node %s] got 'find' request for %s (%d)", node->toString().c_str(), msg->target.to_c_str(), msg->want);
                 ++in_stats.find;
                 RequestAnswer answer = onFindNode(node, msg->target, msg->want);
                 auto nnodes = bufferNodes(from.getFamily(), msg->target, msg->want, answer.nodes4, answer.nodes6);
@@ -540,7 +540,7 @@ NetworkEngine::process(std::unique_ptr<ParsedMessage>&& msg, const SockAddr& fro
                 break;
             }
             case MessageType::GetValues: {
-                DHT_LOG.d(msg->info_hash, node->id, "[node %s] got 'get' request for %s", node->toString().c_str(), msg->info_hash.toString().c_str());
+                DHT_LOG.d(msg->info_hash, node->id, "[node %s] got 'get' request for %s", node->toString().c_str(), msg->info_hash.to_c_str());
                 ++in_stats.get;
                 RequestAnswer answer = onGetValues(node, msg->info_hash, msg->want, msg->query);
                 auto nnodes = bufferNodes(from.getFamily(), msg->info_hash, msg->want, answer.nodes4, answer.nodes6);
@@ -548,7 +548,7 @@ NetworkEngine::process(std::unique_ptr<ParsedMessage>&& msg, const SockAddr& fro
                 break;
             }
             case MessageType::AnnounceValue: {
-                DHT_LOG.d(msg->info_hash, node->id, "[node %s] got 'put' request for %s", node->toString().c_str(), msg->info_hash.toString().c_str());
+                DHT_LOG.d(msg->info_hash, node->id, "[node %s] got 'put' request for %s", node->toString().c_str(), msg->info_hash.to_c_str());
                 ++in_stats.put;
                 onAnnounce(node, msg->info_hash, msg->token, msg->values, msg->created);
 
@@ -561,13 +561,13 @@ NetworkEngine::process(std::unique_ptr<ParsedMessage>&& msg, const SockAddr& fro
                 break;
             }
             case MessageType::Refresh:
-                DHT_LOG.d(msg->info_hash, node->id, "[node %s] got 'refresh' request for %s", node->toString().c_str(), msg->info_hash.toString().c_str());
+                DHT_LOG.d(msg->info_hash, node->id, "[node %s] got 'refresh' request for %s", node->toString().c_str(), msg->info_hash.to_c_str());
                 onRefresh(node, msg->info_hash, msg->token, msg->value_id);
                 /* Same note as above in MessageType::AnnounceValue applies. */
                 sendValueAnnounced(from, msg->tid, msg->value_id);
                 break;
             case MessageType::Listen: {
-                DHT_LOG.d(msg->info_hash, node->id, "[node %s] got 'listen' request for %s", node->toString().c_str(), msg->info_hash.toString().c_str());
+                DHT_LOG.d(msg->info_hash, node->id, "[node %s] got 'listen' request for %s", node->toString().c_str(), msg->info_hash.to_c_str());
                 ++in_stats.listen;
                 /* TODO: backward compatibility check to remove in a few versions (see ::sendListen doc) */
                 auto socket_id = msg->socket_id.getTid() ? msg->socket_id : TransId { TransPrefix::GET_VALUES, msg->tid.getTid() };

@@ -148,7 +148,7 @@ SecureDht::registerCertificate(const InfoHash& node, const Blob& data)
     }
     InfoHash h = crt->getPublicKey().getId();
     if (node == h) {
-        DHT_LOG.DEBUG("Registering certificate for %s", h.toString().c_str());
+        DHT_LOG.DEBUG("Registering certificate for %s", h.to_c_str());
         auto it = nodesCertificates_.find(h);
         if (it == nodesCertificates_.end())
             std::tie(it, std::ignore) = nodesCertificates_.emplace(h, std::move(crt));
@@ -156,7 +156,7 @@ SecureDht::registerCertificate(const InfoHash& node, const Blob& data)
             it->second = std::move(crt);
         return it->second;
     } else {
-        DHT_LOG.DEBUG("Certificate %s for node %s does not match node id !", h.toString().c_str(), node.toString().c_str());
+        DHT_LOG.DEBUG("Certificate %s for node %s does not match node id !", h.to_c_str(), node.to_c_str());
         return nullptr;
     }
 }
@@ -173,7 +173,7 @@ SecureDht::findCertificate(const InfoHash& node, std::function<void(const Sp<cry
 {
     Sp<crypto::Certificate> b = getCertificate(node);
     if (b && *b) {
-        DHT_LOG.DEBUG("Using certificate from cache for %s", node.toString().c_str());
+        DHT_LOG.DEBUG("Using certificate from cache for %s", node.to_c_str());
         if (cb)
             cb(b);
         return;
@@ -181,7 +181,7 @@ SecureDht::findCertificate(const InfoHash& node, std::function<void(const Sp<cry
     if (localQueryMethod_) {
         auto res = localQueryMethod_(node);
         if (not res.empty()) {
-            DHT_LOG.DEBUG("Registering certificate from local store for %s", node.toString().c_str());
+            DHT_LOG.DEBUG("Registering certificate from local store for %s", node.to_c_str());
             nodesCertificates_.emplace(node, res.front());
             if (cb)
                 cb(res.front());
@@ -196,7 +196,7 @@ SecureDht::findCertificate(const InfoHash& node, std::function<void(const Sp<cry
         for (const auto& v : vals) {
             if (auto cert = registerCertificate(node, v->data)) {
                 *found = true;
-                DHT_LOG.DEBUG("Found certificate for %s", node.toString().c_str());
+                DHT_LOG.DEBUG("Found certificate for %s", node.to_c_str());
                 if (cb)
                     cb(cert);
                 return false;
@@ -214,7 +214,7 @@ SecureDht::findPublicKey(const InfoHash& node, std::function<void(const Sp<const
 {
     auto pk = getPublicKey(node);
     if (pk && *pk) {
-        DHT_LOG.DEBUG("Found public key from cache for %s", node.toString().c_str());
+        DHT_LOG.DEBUG("Found public key from cache for %s", node.to_c_str());
         if (cb)
             cb(pk);
         return;
@@ -332,7 +332,7 @@ SecureDht::putEncrypted(const InfoHash& hash, const InfoHash& to, Sp<Value> val,
                 callback(false, {});
             return;
         }
-        DHT_LOG.WARN("Encrypting data for PK: %s", pk->getId().toString().c_str());
+        DHT_LOG.WARN("Encrypting data for PK: %s", pk->getId().to_c_str());
         try {
             put(hash, encrypt(*val, *pk), callback, time_point::max(), permanent);
         } catch (const std::exception& e) {

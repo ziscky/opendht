@@ -110,7 +110,7 @@ Node::setExpired()
 std::string
 Node::toString() const
 {
-    std::stringstream ss;
+    std::ostringstream ss;
     ss << (*this);
     return ss.str();
 }
