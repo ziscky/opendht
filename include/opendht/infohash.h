@@ -44,10 +44,6 @@ typedef uint16_t in_port_t;
 #include <sstream>
 #include <cstring>
 
-
-// bytes
-#define HASH_LEN 20u
-
 namespace dht {
 
 using byte = uint8_t;

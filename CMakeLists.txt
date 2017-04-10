@@ -21,6 +21,7 @@ option (OPENDHT_PYTHON "Build Python bindings" OFF)
 option (OPENDHT_TOOLS "Build DHT tools" ON)
 option (OPENDHT_ARGON2 "Use included argon2 sources" OFF)
 option (OPENDHT_LTO "Build with LTO" OFF)
+option (OPENDHT_C "Build C bindings" ON)
 
 find_package (GnuTLS 3.3 REQUIRED)
 find_package (Msgpack 1.2 REQUIRED)
@@ -170,6 +171,15 @@ if (OPENDHT_SHARED)
     endif ()
     target_link_libraries(opendht gnutls nettle)
     install (TARGETS opendht DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT opendht)
+endif ()
+
+if (OPENDHT_C)
+    add_library (opendht-c SHARED
+        c/opendht.cpp
+        c/opendht_c.h
+    )
+    target_compile_definitions(opendht-c PRIVATE OPENDHT_C_BUILD)
+    target_link_libraries(opendht-c opendht)
 endif ()
 
 if (OPENDHT_TOOLS)
