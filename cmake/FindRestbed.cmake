@@ -13,5 +13,5 @@ endif()
 
 if (RESTBED_INCLUDE)
     set(RESTBED_FOUND TRUE)
-    set(Restbed_LIBRARIES restbed)
+    set(Restbed_LIBRARIES /usr/local/lib/librestbed.a)
 endif()

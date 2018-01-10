@@ -187,33 +187,34 @@ DhtRunner::getNodeId() const
 std::pair<size_t, size_t>
 DhtRunner::getStoreSize() const {
     std::lock_guard<std::mutex> lck(dht_mtx);
-    if (!activeDht())
+    if (!dht_)
         return {};
-    return activeDht()->getStoreSize();
+    return dht_->getStoreSize();
 }
 
 void
 DhtRunner::setStorageLimit(size_t limit) {
     std::lock_guard<std::mutex> lck(dht_mtx);
-    if (!activeDht())
+    if (!dht_)
         throw std::runtime_error("dht is not running");
-    return activeDht()->setStorageLimit(limit);
+    return dht_->setStorageLimit(limit);
 }
 
 std::vector<NodeExport>
 DhtRunner::exportNodes() const {
+    std::cout << "exportNodes " << (void*)this << " " << (void*)dht_.get() << std::endl;
     std::lock_guard<std::mutex> lck(dht_mtx);
     if (!dht_)
         return {};
-    return activeDht()->exportNodes();
+    return dht_->exportNodes();
 }
 
 std::vector<ValuesExport>
 DhtRunner::exportValues() const {
     std::lock_guard<std::mutex> lck(dht_mtx);
-    if (!activeDht())
+    if (!dht_)
         return {};
-    return activeDht()->exportValues();
+    return dht_->exportValues();
 }
 
 void
@@ -237,7 +238,7 @@ DhtRunner::registerType(const ValueType& type) {
 void
 DhtRunner::importValues(const std::vector<ValuesExport>& values) {
     std::lock_guard<std::mutex> lck(dht_mtx);
-    activeDht()->importValues(values);
+    dht_->importValues(values);
 }
 
 unsigned
