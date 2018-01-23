@@ -228,6 +228,9 @@ DhtRunner::exportValues() const {
 void
 DhtRunner::setLoggers(LogMethod error, LogMethod warn, LogMethod debug) {
     std::lock_guard<std::mutex> lck(dht_mtx);
+    LOG_ERR = error;
+    LOG_WARN = warn;
+    LOG_DEBUG = debug;
     if (dht_)
         dht_->setLoggers(std::forward<LogMethod>(error), std::forward<LogMethod>(warn), std::forward<LogMethod>(debug));
 #if OPENDHT_PROXY_CLIENT
@@ -487,6 +490,7 @@ DhtRunner::startNetwork(const SockAddr sin4, const SockAddr sin6)
                     else
                         break;
                     if (rc > 0) {
+                        LOG_WARN("Runner: received packet from %s", print_addr(from, from_len).c_str());
                         {
                             std::lock_guard<std::mutex> lck(sock_mtx);
                             rcv.emplace_back(Blob {buf.begin(), buf.begin()+rc+1}, SockAddr(from, from_len));
@@ -732,6 +736,7 @@ DhtRunner::tryBootstrapContinuously()
                 for (auto it = nodes.rbegin(); it != nodes.rend(); it++) {
                     ++ping_count;
                     try {
+                        LOG_ERR("Runner: bootstrap: %s", it->first.c_str());
                         bootstrap(SockAddr::resolve(it->first, it->second), [&](bool) {
                             if (not running)
                                 return;
@@ -743,6 +748,7 @@ DhtRunner::tryBootstrapContinuously()
                         });
                     } catch (std::invalid_argument& e) {
                         --ping_count;
+                        LOG_ERR("Runner: error bootstraping: %s", e.what());
                         std::cerr << e.what() << std::endl;
                     }
                 }
@@ -872,6 +878,7 @@ DhtRunner::enableProxy(bool proxify)
     }
     if (proxify) {
         // Init the proxy client
+        LOG_WARN("Runner: creating proxy client");
         auto dht_via_proxy = std::unique_ptr<DhtInterface>(
             new DhtProxyClient([this]{
                 if (config_.threaded) {
