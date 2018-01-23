@@ -504,9 +504,9 @@ private:
     SockAddr bound4 {};
     SockAddr bound6 {};
 
-    LogMethod LOG_ERR;
-    LogMethod LOG_WARN;
-    LogMethod LOG_DEBUG;
+    LogMethod LOG_ERR = NOLOG;
+    LogMethod LOG_WARN = NOLOG;
+    LogMethod LOG_DEBUG = NOLOG;
 };
 
 }

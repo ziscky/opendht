@@ -381,6 +381,7 @@ DhtRunner::loop_()
         received = std::move(rcv);
     }
     if (not received.empty()) {
+        LOG_WARN("Runner: loop: treating %zu packets", received.size());
         for (const auto& pck : received) {
             auto& buf = pck.first;
             auto& from = pck.second;
@@ -438,6 +439,7 @@ int bindSocket(const SockAddr& addr, SockAddr& bound)
 void
 DhtRunner::startNetwork(const SockAddr sin4, const SockAddr sin6)
 {
+    LOG_WARN("Runner: startNetwork %s %s", sin4.toString().c_str(), sin6.toString().c_str());
     running_network = false;
     if (rcv_thread.joinable())
         rcv_thread.join();
@@ -453,6 +455,8 @@ DhtRunner::startNetwork(const SockAddr sin4, const SockAddr sin6)
     if (sin6)
         s6 = bindSocket(sin6, bound6);
 #endif
+
+    LOG_WARN("Runner: startNetwork: got sockets %d %d", s4, s6);
 
     running_network = true;
     rcv_thread = std::thread([this]() {
@@ -901,6 +905,7 @@ DhtRunner::enableProxy(bool proxify)
         // and use it
         use_proxy = proxify;
     } else {
+        LOG_WARN("Runner: destroying proxy client");
         use_proxy = proxify;
         std::lock_guard<std::mutex> lck(storage_mtx);
         if (not listeners_.empty()) {
