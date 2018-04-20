@@ -634,11 +634,13 @@ DhtProxyClient::cancelListen(const InfoHash& key, size_t gtoken) {
         return false;
     auto& ops = it->second.ops;
     bool canceled = ops.cancelListen(gtoken, scheduler.time());
+    DHT_LOG.e(key, "=>[search %s]: cancelListen %zu", key.to_c_str(), gtoken);
     if (not it->second.opExpirationJob) {
         it->second.opExpirationJob = scheduler.add(time_point::max(), [this,key](){
             auto it = searches_.find(key);
             if (it != searches_.end()) {
                 auto next = it->second.ops.expire(scheduler.time(), [this,key](size_t ltoken){
+                    DHT_LOG.e(key, "########################[search %s]: cancelListen %zu", key.to_c_str(), ltoken);
                     doCancelListen(key, ltoken);
                 });
                 scheduler.edit(it->second.opExpirationJob, next);

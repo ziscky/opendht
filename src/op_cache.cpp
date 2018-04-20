@@ -23,6 +23,7 @@ constexpr const std::chrono::seconds OpCache::EXPIRATION;
 
 bool
 OpValueCache::onValuesAdded(const std::vector<Sp<Value>>& vals) {
+    std::cout << "########################onValuesAdded" << std::endl;
     std::vector<Sp<Value>> newValues;
     for (const auto& v : vals) {
         auto viop = values.emplace(v->id, OpCacheValueStorage{v});
@@ -36,6 +37,7 @@ OpValueCache::onValuesAdded(const std::vector<Sp<Value>>& vals) {
 }
 bool
 OpValueCache::onValuesExpired(const std::vector<Sp<Value>>& vals) {
+    std::cout << "########################onValuesExpired" << std::endl;
     std::vector<Sp<Value>> expiredValues;
     for (const auto& v : vals) {
         auto vit = values.find(v->id);
@@ -43,6 +45,7 @@ OpValueCache::onValuesExpired(const std::vector<Sp<Value>>& vals) {
             vit->second.refCount--;
             if (not vit->second.refCount) {
                 expiredValues.emplace_back(std::move(vit->second.data));
+                std::cout << "########################ERASEVALUE" << std::endl;
                 values.erase(vit);
             }
         }

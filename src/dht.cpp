@@ -861,6 +861,7 @@ Dht::listen(const InfoHash& id, ValueCallback cb, Value::Filter f, Where where)
 bool
 Dht::cancelListen(const InfoHash& id, size_t token)
 {
+    std::cout << "########## CANCEL LISTEN" << std::endl;
     scheduler.syncTime();
 
     auto it = listeners.find(token);
@@ -875,9 +876,14 @@ Dht::cancelListen(const InfoHash& id, size_t token)
         st->second.local_listeners.erase(tokenlocal);
 
     auto searches_cancel_listen = [this,&id](std::map<InfoHash, Sp<Search>>& srs, size_t token) {
+        std::cout << "########## SEARCHES CANCEL LISTEN" << std::endl;
         auto srp = srs.find(id);
-        if (srp != srs.end() and token)
+        if (srp != srs.end() and token) {
+            DHT_LOG.e(id, "########## cancelListen %s with token %d", id.toString().c_str(), token);
+            std::cout << "########## cancelListen" << std::endl;
+
             srp->second->cancelListen(token, scheduler);
+        }
     };
     searches_cancel_listen(searches4, std::get<1>(it->second));
     searches_cancel_listen(searches6, std::get<2>(it->second));
