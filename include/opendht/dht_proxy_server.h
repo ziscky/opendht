@@ -17,8 +17,6 @@
  *  along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#if OPENDHT_PROXY_SERVER
-
 #pragma once
 
 #include "callbacks.h"
@@ -45,6 +43,7 @@ namespace Json {
 namespace dht {
 
 class DhtRunner;
+class ThreadPool;
 
 /**
  * Describes the REST API
@@ -178,7 +177,7 @@ private:
 
     void cancelPut(const InfoHash& key, Value::Id vid);
 
-#if OPENDHT_PROXY_SERVER_IDENTITY
+#ifdef OPENDHT_PROXY_SERVER_IDENTITY
     /**
      * Put a value to sign by the proxy on the DHT
      * Method: SIGN "/{InfoHash: .*}"
@@ -229,7 +228,7 @@ private:
      */
     void removeClosedListeners(bool testSession = true);
 
-#if OPENDHT_PUSH_NOTIFICATIONS
+#ifdef OPENDHT_PUSH_NOTIFICATIONS
     /**
      * Subscribe to push notifications for an iOS or Android device.
      * Method: SUBSCRIBE "/{InfoHash: .*}"
@@ -277,6 +276,7 @@ private:
     std::condition_variable schedulerCv_;
     Scheduler scheduler_;
     std::thread schedulerThread_;
+    std::unique_ptr<ThreadPool> threadPool_;
 
     Sp<Scheduler::Job> printStatsJob_;
     mutable std::mutex statsMutex_;
@@ -305,7 +305,7 @@ private:
 
     mutable ServerStats stats_;
 
-#if OPENDHT_PUSH_NOTIFICATIONS
+#ifdef OPENDHT_PUSH_NOTIFICATIONS
     struct Listener;
     struct PushListener;
     std::mutex lockPushListeners_;
@@ -315,5 +315,3 @@ private:
 };
 
 }
-
-#endif //OPENDHT_PROXY_SERVER
