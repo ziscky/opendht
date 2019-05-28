@@ -465,22 +465,22 @@ DhtRunner::loop_()
 
     // Discard old packets
     size_t dropped {0};
-    if (not received.empty()) {
-        auto now = clock::now();
-        while (not received.empty() and now - received.front().received > RX_QUEUE_MAX_DELAY) {
-            received.pop();
-            dropped++;
-        }
-    }
+    // if (not received.empty()) {
+    //     auto now = clock::now();
+    //     while (not received.empty() and now - received.front().received > RX_QUEUE_MAX_DELAY) {
+    //         received.pop();
+    //         dropped++;
+    //     }
+    // }
 
     // Handle packets
     if (not received.empty()) {
         while (not received.empty()) {
             auto& pck = received.front();
-            if (clock::now() - pck.received > RX_QUEUE_MAX_DELAY)
-                dropped++;
-            else
-                wakeup = dht->periodic(pck.data.data(), pck.data.size(), pck.from);
+            // if (clock::now() - pck.received > RX_QUEUE_MAX_DELAY)
+            //     dropped++;
+            // else
+            wakeup = dht->periodic(pck.data.data(), pck.data.size(), pck.from);
             received.pop();
         }
     } else {
