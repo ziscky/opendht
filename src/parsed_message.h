@@ -22,6 +22,7 @@
 #include "net.h"
 
 #include <map>
+#include <iostream>
 
 namespace dht {
 namespace net {
@@ -322,8 +323,12 @@ ParsedMessage::msgpack_unpack(const msgpack::object& msg)
             auto& packed_v = parsedReq.values->via.array.ptr[i];
             if (packed_v.type == msgpack::type::POSITIVE_INTEGER) {
                 // Skip oversize values with a small margin for header overhead
-                if (packed_v.via.u64 > MAX_VALUE_SIZE + 32)
+                if (packed_v.via.u64 > MAX_VALUE_SIZE + 32){
+                    std::cout<<"[OPENDHT]-----> SKIPPING LARGE MESSAGE"<<std::endl;
+                    std::cout<<"[OPENDHT]-----> ACTUAL SIZE: "<< (packed_v.via.u64) <<std::endl;
                     continue;
+                }
+                    
                 value_parts.emplace(i, std::make_pair(packed_v.via.u64, Blob{}));
             } else {
                 try {
