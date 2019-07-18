@@ -74,7 +74,7 @@ using StorePolicy = std::function<bool(InfoHash key, std::shared_ptr<Value>& val
  */
 using EditPolicy = std::function<bool(InfoHash key, const std::shared_ptr<Value>& old_val, std::shared_ptr<Value>& new_val, const InfoHash& from, const SockAddr& addr)>;
 
-static constexpr const size_t MAX_VALUE_SIZE {1024 * 1024};
+static constexpr const size_t MAX_VALUE_SIZE {1024 * 3072};
 
 struct OPENDHT_PUBLIC ValueType {
     typedef uint16_t Id;
