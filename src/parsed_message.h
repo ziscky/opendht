@@ -328,6 +328,7 @@ ParsedMessage::msgpack_unpack(const msgpack::object& msg)
                     std::cout<<"[OPENDHT]-----> ACTUAL SIZE: "<< (packed_v.via.u64) <<std::endl;
                     continue;
                 }
+                std::cout<<"[OPENDHT]-----> ACTUAL SIZE: "<< (packed_v.via.u64) <<std::endl;
                     
                 value_parts.emplace(i, std::make_pair(packed_v.via.u64, Blob{}));
             } else {
